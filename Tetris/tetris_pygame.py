@@ -6,8 +6,8 @@ WIDTH = 360 + 200
 HEIGHT = 660
 FPS = 60			# частота обновления экрана
 T_S = 30		# стандартный размер деталей игры
-time = 0			# данные 2 значения понадобятся чтобы сделать движение
-time_step = 450		# змейки не плавным а дискретным и в тоже время это скорость змейки
+time = 0			# данные 2 значения понадобятся чтобы сделать движение блока
+time_step = 450		#  не плавным а дискретным и в тоже время это скорость блока
 
 # Инициализация объектов
 pg.init()
@@ -33,7 +33,7 @@ def init_blok():
     return segments
 
 down_dir = (0, 0)
-blok_dir = (0, 0)						# смещение змейки по игровому полю
+blok_dir = (0, 0)						# смещение 
 blok_rotate = False
 
 segments = init_blok()
@@ -60,8 +60,8 @@ while True:
     
     gameScreen.fill((0, 0, 0))							# заливаем фон каким либо цветом
     pg.draw.rect(gameScreen, (128, 128, 128), (30, 630, 300, 30))
-    pg.draw.rect(gameScreen, (128, 128, 128), (0, 0, 30, 660))	# эти две границы мне понадобились во время
-    pg.draw.rect(gameScreen, (128, 128, 128), (330, 0, 30, 660))	# запуска интерпретатора с игрой на мобилке (по сути они не нужны)
+    pg.draw.rect(gameScreen, (128, 128, 128), (0, 0, 30, 660))
+    pg.draw.rect(gameScreen, (128, 128, 128), (330, 0, 30, 660))
     
     # вращение блока
     if blok_rotate:
@@ -109,7 +109,7 @@ while True:
         segments = init_blok()
     
     # стирание полных строк
-    '''segments_dict = {}
+    segments_dict = {}
     for i, segment in enumerate(segments_filling):
         if segment.centery not in segments_dict:
             segments_dict[segment.centery] = [1, i]
@@ -117,10 +117,17 @@ while True:
             segments_dict[segment.centery][0] += 1
             segments_dict[segment.centery].append(i)
         if segments_dict[segment.centery][0] == 10:
-            for j in range(1, 11):
-                segments_filling.pop(segments_dict[segment.centery][j])'''
+            temp = []
+            remove_list = segments_dict[segment.centery][1:11]
+            for j in range(len(segments_filling)):
+                if j not in remove_list:
+                    temp.append(segments_filling[j])
+            segments_filling = temp
+            for segm in segments_filling:
+                if segm.centery <= segment.centery:
+                    segm.move_ip(0, T_S)
             
-    # Отображаем змейку
+    # Отображаем блоки
     [pg.draw.rect(gameScreen, (255, 255, 255), segment) for segment in segments]
     [pg.draw.rect(gameScreen, (255, 255, 255), segment) for segment in segments_filling]
 
