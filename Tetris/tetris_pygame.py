@@ -92,7 +92,7 @@ while True:
     if time_now - time > time_step:		# проверяем что прошёл необходимый интервал времени
         time = time_now
         for i in range(4):
-            segments[i].move_ip(down_dir)        
+            segments[i].move_ip(down_dir) 
     
     # столкновение с дном или с другими блоками
     bottom_wall_collision = pg.Rect.collidelist(pg.rect.Rect([30, 630, 300, 30]), segments) != -1 # Столкновение с дном
@@ -124,8 +124,10 @@ while True:
                     temp.append(segments_filling[j])
             segments_filling = temp
             for segm in segments_filling:
-                if segm.centery <= segment.centery:
+                if segm.centery < segment.centery:
                     segm.move_ip(0, T_S)
+            break
+                
             
     # Отображаем блоки
     [pg.draw.rect(gameScreen, (255, 255, 255), segment) for segment in segments]
