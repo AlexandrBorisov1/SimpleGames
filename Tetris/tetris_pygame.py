@@ -15,29 +15,136 @@ gameScreen = pg.display.set_mode([WIDTH, HEIGHT])
 pg.display.set_caption("Tetris")
 clock = pg.time.Clock()
 
-# Параметры блока
-T_blok = [[165, 15], [165, 45], [165, 75], [195, 45]]   # вращение [[0*T_S + 165, 0*T_S + 15], [0, 1], [0, 2], [1, 1]] [[]]
-L_blok = [[165, 15], [165, 45], [165, 75], [195, 75]]
-L_inv_blok = [[195, 15], [195, 45], [195, 75], [165, 75]]
-sq_blok = [[165, 15], [195, 15], [165, 45], [195, 45]]
-line_blok = [[135, 15], [165, 15], [195, 15], [225, 15]]
+class Blok():
+    def __init__(self):
+        self.T_blok = [[165, 15], [165, 45], [165, 75], [195, 45]]
+        self.L_blok = [[165, 15], [165, 45], [165, 75], [195, 75]]
+        self.L_inv_blok = [[195, 15], [195, 45], [195, 75], [165, 75]]
+        self.sq_blok = [[165, 15], [195, 15], [165, 45], [195, 45]]
+        self.line_blok = [[135, 15], [165, 15], [195, 15], [225, 15]]
+        
+        self.segments = []
+        #self.blok_rotate = False
+        self.time = 0
+        
+    def rand_blok_init(self):
+        # Инициализация случайного блока
+        blok = pg.rect.Rect([0, 0, T_S - 2, T_S - 2])
 
-blok = pg.rect.Rect([0, 0, T_S - 2, T_S - 2])
-
-def init_blok():
-    segments = [blok.copy(), blok.copy(), blok.copy(), blok.copy()]
-    rand_blok = random.choice([T_blok, L_blok, L_inv_blok, sq_blok, line_blok])
-    for i in range(4):
-        segments[i].center = rand_blok[i]
+        self.segments = [blok.copy(), blok.copy(), blok.copy(), blok.copy()]
+        rand_blok = random.choice([self.T_blok, self.L_blok, self.L_inv_blok, self.sq_blok, self.line_blok])
+        for i in range(4):
+            self.segments[i].center = rand_blok[i]
     
-    return segments
+    def rotate_blok(self):
+        # Вращение блока
+        #if self.blok_rotate:
+        bias_x = self.segments[1].centerx - self.segments[1].centery
+        bias_y = self.segments[1].centerx + self.segments[1].centery
+        for i in range(4):
+            self.segments[i].centerx, self.segments[i].centery = self.segments[i].centery + bias_x, (self.segments[i].centerx * -1) + bias_y
+        #self.blok_rotate = False
+        
+    def auto_move_down_blok(self, cup):
+        time_now = pg.time.get_ticks()
+        if time_now - self.time > time_step:		# проверяем что прошёл необходимый интервал времени
+            self.time = time_now
+            for i in range(4):
+                self.segments[i].move_ip((0, T_S))
+        # Столкновение с дном
+        bottom_wall_collision = pg.Rect.collidelist(cup.bottom_wall, self.segments) != -1
+        bottom_segment_collision = False
+        for i in range(4):
+            bottom_segment_collision = pg.Rect.collidelist(self.segments[i], cup.segments_filling) != -1
+            if bottom_segment_collision:
+                break
+        if bottom_wall_collision or bottom_segment_collision:
+            self.move_up_blok()
+            cup.add_segments(self.segments)
+            self.rand_blok_init()
+    
+    def move_down_blok(self): # хз делать ограничение или нет
+        for i in range(4):
+            self.segments[i].move_ip((0, T_S))
+    
+    def move_left_blok(self, cup):
+        for i in range(4):
+            self.segments[i].move_ip((-T_S, 0))
+        # Столкновение с левой стеной
+        left_wall_collision = pg.Rect.collidelist(cup.left_wall, self.segments) != -1
+        left_segment_collision = False
+        for i in range(4):
+            left_segment_collision = pg.Rect.collidelist(self.segments[i], cup.segments_filling) != -1
+            if left_segment_collision:
+                break
+        if left_wall_collision or left_segment_collision:
+            self.move_right_blok(cup)
+    
+    def move_right_blok(self, cup):
+        for i in range(4):
+            self.segments[i].move_ip((T_S, 0))
+        # Столкновение с правой стеной
+        right_wall_collision = pg.Rect.collidelist(cup.right_wall, self.segments) != -1
+        right_segment_collision = False
+        for i in range(4):
+            right_segment_collision = pg.Rect.collidelist(self.segments[i], cup.segments_filling) != -1
+            if right_segment_collision:
+                break
+        if right_wall_collision or right_segment_collision:
+            self.move_left_blok(cup)
+    
+    def move_up_blok(self):
+        for i in range(4):
+            self.segments[i].move_ip((0, -T_S))
+    
+    def render_blok(self):
+    	[pg.draw.rect(gameScreen, (255, 255, 255), segment) for segment in self.segments]
 
-down_dir = (0, 0)
-blok_dir = (0, 0)						# смещение 
-blok_rotate = False
+        
+class GameField():
+    def __init__(self):
+        self.segments_filling = []
+        self.left_wall = pg.rect.Rect([0, 0, 30, 660])
+        self.right_wall = pg.rect.Rect([330, 0, 30, 660])
+        self.bottom_wall = pg.rect.Rect([30, 630, 300, 30])
 
-segments = init_blok()
-segments_filling = []
+    def add_segments(self, segments):
+        self.segments_filling.extend(segments)
+
+    def draw_cup_walls(self):
+        pg.draw.rect(gameScreen, (128, 128, 128), self.bottom_wall)
+        pg.draw.rect(gameScreen, (128, 128, 128), self.left_wall)
+        pg.draw.rect(gameScreen, (128, 128, 128), self.right_wall)
+
+    def remove_full_line(self):
+        # стирание полных строк
+        segments_dict = {}
+        for i, segment in enumerate(self.segments_filling):
+            if segment.centery not in segments_dict:
+                segments_dict[segment.centery] = [1, i]
+            else:
+                segments_dict[segment.centery][0] += 1
+                segments_dict[segment.centery].append(i)
+            if segments_dict[segment.centery][0] == 10:
+                temp = []
+                remove_list = segments_dict[segment.centery][1:11]
+                for j in range(len(self.segments_filling)):
+                    if j not in remove_list:
+                        temp.append(self.segments_filling[j])
+                self.segments_filling = temp
+                for segm in self.segments_filling:
+                    if segm.centery < segment.centery:
+                        segm.move_ip(0, T_S)
+                break
+	
+    def render_segments_filling(self):
+	    [pg.draw.rect(gameScreen, (255, 255, 255), segment) for segment in self.segments_filling]
+
+
+blok = Blok()
+blok.rand_blok_init()
+gameField = GameField()
+
 # Главный цикл игры
 while True:
     # Частота обновления экрана
@@ -48,90 +155,25 @@ while True:
             exit()
         elif event.type == pg.KEYDOWN:		# обработка нажатия клавиш
             if event.key in [pg.K_DOWN, pg.K_s]:
-                down_dir = (0, T_S)
-                blok_dir = (0, T_S)
+                blok.move_down_blok()
             if event.key in [pg.K_LEFT, pg.K_a]:
-                blok_dir = (-T_S, 0)
-            if event.key in [pg.K_RIGHT, pg.K_d] and blok.right < 300:
-                blok_dir = (T_S, 0)
+                blok.move_left_blok(gameField)
+            if event.key in [pg.K_RIGHT, pg.K_d]:
+                blok.move_right_blok(gameField)
             if event.key in [pg.K_SPACE, pg.K_w, pg.K_UP]:
-                blok_rotate = True
+                blok.rotate_blok()
 
     
     gameScreen.fill((0, 0, 0))							# заливаем фон каким либо цветом
-    pg.draw.rect(gameScreen, (128, 128, 128), (30, 630, 300, 30))
-    pg.draw.rect(gameScreen, (128, 128, 128), (0, 0, 30, 660))
-    pg.draw.rect(gameScreen, (128, 128, 128), (330, 0, 30, 660))
-    
-    # вращение блока
-    if blok_rotate:
-        bias_x = segments[1].centerx - segments[1].centery
-        bias_y = segments[1].centerx + segments[1].centery
-        for i in range(4):
-            segments[i].centerx, segments[i].centery = segments[i].centery + bias_x, (segments[i].centerx * -1) + bias_y
-        blok_rotate = False
-
-    # Перемещаем блок
-    for i in range(4):
-        segments[i].move_ip(blok_dir)
-    # Столкновение с левой стеной
-    left_wall_collision = pg.Rect.collidelist(pg.rect.Rect([0, 0, 30, 660]), segments) != -1
-    if left_wall_collision:
-        for i in range(4):
-            segments[i].move_ip((T_S, 0))
-    # Столкновение с правой стеной
-    right_wall_collision = pg.Rect.collidelist(pg.rect.Rect([330, 0, 30, 660]), segments) != -1
-    if right_wall_collision:
-        for i in range(4):
-            segments[i].move_ip((-T_S, 0))
-    
-    blok_dir = (0, 0)
-    
+    gameField.draw_cup_walls()    
     # движение блока вниз
-    time_now = pg.time.get_ticks()
-    if time_now - time > time_step:		# проверяем что прошёл необходимый интервал времени
-        time = time_now
-        for i in range(4):
-            segments[i].move_ip(down_dir) 
-    
-    # столкновение с дном или с другими блоками
-    bottom_wall_collision = pg.Rect.collidelist(pg.rect.Rect([30, 630, 300, 30]), segments) != -1 # Столкновение с дном
-    bottom_segment_collision = False
-    for i in range(4):                                                                            # Столкновение с другим блоком
-        if pg.Rect.collidelist(segments[i], segments_filling) != -1:                              # работает плохо срабатывает не только когда столкновение сверху вниз
-            bottom_segment_collision = True
-            break
-    
-    if bottom_wall_collision or bottom_segment_collision:
-        for i in range(4):
-            segments[i].move_ip((0, -T_S))
-        segments_filling.extend(segments)
-        segments = init_blok()
-    
+    blok.auto_move_down_blok(gameField)
     # стирание полных строк
-    segments_dict = {}
-    for i, segment in enumerate(segments_filling):
-        if segment.centery not in segments_dict:
-            segments_dict[segment.centery] = [1, i]
-        else:
-            segments_dict[segment.centery][0] += 1
-            segments_dict[segment.centery].append(i)
-        if segments_dict[segment.centery][0] == 10:
-            temp = []
-            remove_list = segments_dict[segment.centery][1:11]
-            for j in range(len(segments_filling)):
-                if j not in remove_list:
-                    temp.append(segments_filling[j])
-            segments_filling = temp
-            for segm in segments_filling:
-                if segm.centery < segment.centery:
-                    segm.move_ip(0, T_S)
-            break
-                
+    gameField.remove_full_line()        
             
     # Отображаем блоки
-    [pg.draw.rect(gameScreen, (255, 255, 255), segment) for segment in segments]
-    [pg.draw.rect(gameScreen, (255, 255, 255), segment) for segment in segments_filling]
+    blok.render_blok()
+    gameField.render_segments_filling()
 
     pg.display.flip() # обновляем экран
 
