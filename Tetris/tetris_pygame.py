@@ -8,6 +8,7 @@ FPS = 60			# частота обновления экрана
 T_S = 30		# стандартный размер деталей игры
 time = 0			# данные 2 значения понадобятся чтобы сделать движение блока
 time_step = 450		#  не плавным а дискретным и в тоже время это скорость блока
+GAME_START = False
 
 # Инициализация объектов
 pg.init()
@@ -47,7 +48,7 @@ class Blok():
         
     def auto_move_down_blok(self, cup):
         time_now = pg.time.get_ticks()
-        if time_now - self.time > time_step:		# проверяем что прошёл необходимый интервал времени
+        if time_now - self.time > time_step and GAME_START:		# проверяем что прошёл необходимый интервал времени
             self.time = time_now
             for i in range(4):
                 self.segments[i].move_ip((0, T_S))
@@ -116,7 +117,7 @@ class GameField():
         pg.draw.rect(gameScreen, (128, 128, 128), self.left_wall)
         pg.draw.rect(gameScreen, (128, 128, 128), self.right_wall)
 
-    def remove_full_line(self):
+    def remove_full_line(self, score_counter):
         # стирание полных строк
         segments_dict = {}
         for i, segment in enumerate(self.segments_filling):
@@ -132,6 +133,7 @@ class GameField():
                     if j not in remove_list:
                         temp.append(self.segments_filling[j])
                 self.segments_filling = temp
+                score_counter.score_counter()
                 for segm in self.segments_filling:
                     if segm.centery < segment.centery:
                         segm.move_ip(0, T_S)
@@ -141,9 +143,40 @@ class GameField():
 	    [pg.draw.rect(gameScreen, (255, 255, 255), segment) for segment in self.segments_filling]
 
 
+class GameInterface():
+    def __init__(self):
+        self.current_score = 0
+        f = open('tetris_best_score.txt')
+        self.best_score = f.read()
+        f.close()
+        self.level = 1
+    def score_counter(self):
+        self.current_score += 1
+        '''if self.current_score > self.best_score:
+            self.best_score = self.current_score'''
+    def game_over(self, cup):
+        for segm in cup:
+            if segm.centery == 300:
+                GAME_START = False
+                break
+    def render_interface(self):
+        f1 = pg.font.Font(None, 25)
+        curr_sc_text = f1.render(f'Текущий счёт: {self.current_score}', 1, (128, 128, 128))
+        gameScreen.blit(curr_sc_text, (390, 30))
+        best_sc_text = f1.render(f'Лучший счёт: {self.best_score}', 1, (128, 128, 128))
+        gameScreen.blit(best_sc_text, (390, 60))
+        level_text = f1.render(f'Уровень: {self.level}', 1, (128, 128, 128))
+        gameScreen.blit(level_text, (390, 90))
+        if not GAME_START:
+            start_text = f1.render('Для начала игры нажмите "s"', 1, (128, 0, 0))
+            gameScreen.blit(start_text, (50, 300))
+
+
+
 blok = Blok()
 blok.rand_blok_init()
 gameField = GameField()
+gameInterface = GameInterface()
 
 # Главный цикл игры
 while True:
@@ -156,6 +189,7 @@ while True:
         elif event.type == pg.KEYDOWN:		# обработка нажатия клавиш
             if event.key in [pg.K_DOWN, pg.K_s]:
                 blok.move_down_blok()
+                GAME_START = True
             if event.key in [pg.K_LEFT, pg.K_a]:
                 blok.move_left_blok(gameField)
             if event.key in [pg.K_RIGHT, pg.K_d]:
@@ -165,16 +199,17 @@ while True:
 
     
     gameScreen.fill((0, 0, 0))							# заливаем фон каким либо цветом
-    gameField.draw_cup_walls()    
+    gameField.draw_cup_walls()
     # движение блока вниз
     blok.auto_move_down_blok(gameField)
+    gameInterface.game_over(gameField.segments_filling)
     # стирание полных строк
-    gameField.remove_full_line()        
-            
+    gameField.remove_full_line(gameInterface)
     # Отображаем блоки
     blok.render_blok()
     gameField.render_segments_filling()
-
+    gameInterface.render_interface()
+    
     pg.display.flip() # обновляем экран
 
 pg.quit()
